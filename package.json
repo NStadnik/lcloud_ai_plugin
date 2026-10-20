@@ -1,0 +1,23 @@
+{
+  "name": "lklaud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Локальний MCP-плагін ЛКЛАУД для персонального users API",
+  "type": "module",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "start:http": "node server/http.mjs",
+    "configure": "node scripts/configure.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1"
+  },
+  "devDependencies": {
+    "yaml": "2.9.1"
+  }
+}
