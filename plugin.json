@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "lklaud",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Власний розклад і профіль у хмарі закладу освіти ЛКЛАУД через персональний users API.",
   "author": {
     "name": "ЛКЛАУД"
@@ -16,7 +16,7 @@
       "interface": {
         "displayName": "ЛКЛАУД",
         "shortDescription": "Ваш розклад у хмарі закладу",
-        "longDescription": "Власний розклад і профіль через OAuth у users. Після встановлення відкрийте налаштування, виберіть основний, тестовий або власний сервер і підтвердьте доступ на сайті хмари.",
+        "longDescription": "Власний розклад і профіль через OAuth у users. Після встановлення відкрийте налаштування, уведіть адресу хмари (ЛКЛАУД чи Бухлік) і підтвердьте доступ на сайті хмари.",
         "developerName": "ЛКЛАУД",
         "category": "Productivity",
         "capabilities": [],

@@ -13,10 +13,9 @@ export function codexExecutable() {
 }
 
 export const CONNECTION_NAME = 'lklaud-user';
-export const SERVERS = Object.freeze({ production: 'https://lcloud.in.ua', test: 'https://dev.nns.in.ua' });
 
 export function serverOrigin(value) {
-  if (typeof value !== 'string' || !value.trim() || value.length > 2048 || /[\x00-\x20\x7f]/.test(value.trim())) throw new Error('Укажіть адресу сервера, наприклад https://lcloud.in.ua.');
+  if (typeof value !== 'string' || !value.trim() || value.length > 2048 || /[\x00-\x20\x7f]/.test(value.trim())) throw new Error('Введіть адресу хмари (ЛКЛАУД чи Бухлік), наприклад https://lcloud.in.ua.');
   const input = value.trim();
   const url = new URL(input.includes('://') ? input : `https://${input}`);
   if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Потрібна HTTPS-адреса сервера без шляху, параметрів, логіна й пароля.');
@@ -93,7 +92,7 @@ export async function createSetup({ fetchImpl = globalThis.fetch, configure = co
       if (Buffer.byteLength(supplied) !== Buffer.byteLength(csrf) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(csrf))) return send(res, 403, { error: 'invalid_csrf' });
       if (['checking', 'authorizing'].includes(state.phase)) return send(res, 409, { error: 'already_running' });
       let selected;
-      try { selected = serverOrigin(fields.get('environment') === 'custom' ? fields.get('customUrl') : SERVERS[fields.get('environment')]); }
+      try { selected = serverOrigin(fields.get('cloudUrl')); }
       catch (error) { return send(res, 400, { error: error.message }); }
       state = { phase: 'checking', saved: false, server: selected, message: '' };
       send(res, 202, state);
@@ -116,7 +115,7 @@ export async function createSetup({ fetchImpl = globalThis.fetch, configure = co
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const setup = await createSetup();
-  process.stdout.write(`Вибір сервера ЛКЛАУД: ${setup.url}\nМайстер працює 15 хвилин. Завершити: Ctrl+C.\n`);
+  process.stdout.write(`Підключення хмари (ЛКЛАУД чи Бухлік): ${setup.url}\nМайстер працює 15 хвилин. Завершити: Ctrl+C.\n`);
   if (!process.argv.includes('--no-open')) {
     const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer.exe' : 'xdg-open';
     const browser = spawn(command, [setup.url], { stdio: 'ignore' });

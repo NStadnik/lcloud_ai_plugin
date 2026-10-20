@@ -36,15 +36,15 @@ test('server addresses become a canonical HTTPS origin', () => {
   }
 });
 
-for (const [environment, customUrl, expected] of [
-  ['production', '', 'https://lcloud.in.ua'], ['test', '', 'https://dev.nns.in.ua'], ['custom', 'college.example', 'https://college.example']
+for (const [cloudUrl, expected] of [
+  ['lcloud.in.ua', 'https://lcloud.in.ua'], ['https://dev.nns.in.ua/', 'https://dev.nns.in.ua'], ['college.example', 'https://college.example']
 ]) {
-  test(`browser selection connects only to ${environment}`, async () => {
+  test(`browser URL input connects only to ${expected}`, async () => {
     const calls = [];
     const setup = await createSetup({ fetchImpl: metadata(expected), configure: async (origin, { onProgress }) => { calls.push(origin); onProgress('authorizing', true); } });
     try {
       const csrf = await form(setup);
-      assert.equal((await submit(setup, csrf, { environment, customUrl })).status, 202);
+      assert.equal((await submit(setup, csrf, { cloudUrl })).status, 202);
       const state = await finished(setup);
       assert.equal(state.phase, 'done'); assert.equal(state.server, expected); assert.equal(state.saved, true);
       assert.deepEqual(calls, [expected]);
@@ -57,11 +57,11 @@ test('untrusted form submissions and invalid addresses never configure Codex', a
   const setup = await createSetup({ configure: async () => { configured = true; } });
   try {
     const csrf = await form(setup);
-    assert.equal((await submit(setup, csrf, { environment: 'production' }, 'https://evil.example')).status, 403);
-    assert.equal((await submit(setup, 'a'.repeat(64), { environment: 'production' })).status, 403);
-    assert.equal((await submit(setup, 'ї'.repeat(64), { environment: 'production' })).status, 403);
-    assert.equal((await submit(setup, csrf, { environment: 'custom', customUrl: 'https://user:secret@lcloud.in.ua' })).status, 400);
-    assert.equal((await submit(setup, csrf, { environment: 'unknown' })).status, 400);
+    assert.equal((await submit(setup, csrf, { cloudUrl: 'lcloud.in.ua' }, 'https://evil.example')).status, 403);
+    assert.equal((await submit(setup, 'a'.repeat(64), { cloudUrl: 'lcloud.in.ua' })).status, 403);
+    assert.equal((await submit(setup, 'ї'.repeat(64), { cloudUrl: 'lcloud.in.ua' })).status, 403);
+    assert.equal((await submit(setup, csrf, { cloudUrl: 'https://user:secret@lcloud.in.ua' })).status, 400);
+    assert.equal((await submit(setup, csrf, {})).status, 400);
     const hostStatus = await new Promise((resolve, reject) => { const req = request(setup.url, { headers: { Host: 'evil.example' } }, response => { response.resume(); resolve(response.statusCode); }); req.on('error', reject); req.end(); });
     assert.equal(hostStatus, 403);
     assert.equal(configured, false);
@@ -72,7 +72,7 @@ test('mismatched discovery cannot change the user connection', async () => {
   let configured = false;
   const setup = await createSetup({ fetchImpl: metadata('https://other.example'), configure: async () => { configured = true; } });
   try {
-    assert.equal((await submit(setup, await form(setup), { environment: 'production' })).status, 202);
+    assert.equal((await submit(setup, await form(setup), { cloudUrl: 'lcloud.in.ua' })).status, 202);
     const state = await finished(setup);
     assert.equal(state.phase, 'error'); assert.equal(state.saved, false); assert.equal(configured, false);
   } finally { await setup.close(); }
@@ -86,8 +86,8 @@ test('parallel submits cannot race connection changes', async () => {
   const setup = await createSetup({ fetchImpl: metadata('https://lcloud.in.ua'), configure: async (_, { onProgress }) => { onProgress('authorizing', true); started(); await pending; } });
   try {
     const csrf = await form(setup);
-    await submit(setup, csrf, { environment: 'production' }); await running;
-    assert.equal((await submit(setup, csrf, { environment: 'test' })).status, 409);
+    await submit(setup, csrf, { cloudUrl: 'lcloud.in.ua' }); await running;
+    assert.equal((await submit(setup, csrf, { cloudUrl: 'dev.nns.in.ua' })).status, 409);
     release(); assert.equal((await finished(setup)).server, 'https://lcloud.in.ua');
   } finally { release(); await setup.close(); }
 });
