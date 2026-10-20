@@ -1,0 +1,20 @@
+{
+  "name": "lklaud-marketplace",
+  "interface": {
+    "displayName": "ЛКЛАУД"
+  },
+  "plugins": [
+    {
+      "name": "lklaud",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
