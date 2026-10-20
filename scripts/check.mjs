@@ -19,17 +19,12 @@ const metadata = plugin.extensions['com.openai'].interface;
 assert.equal(metadata.displayName, 'ЛКЛАУД');
 assert(Array.from(metadata.shortDescription).length <= 30);
 assert(Array.isArray(metadata.capabilities));
-const definition = mcp.mcpServers.lklaud;
-assert.equal(definition.type, 'streamable-http');
-const endpoint = new URL(definition.url);
-assert.equal(endpoint.protocol, 'https:'); assert.equal(endpoint.pathname, '/mcp');
-assert(!endpoint.username && !endpoint.password && !endpoint.search && !endpoint.hash);
-for (const field of ['command', 'args', 'cwd', 'env']) assert(!Object.hasOwn(definition, field));
-// Current Codex rejects unknown server fields, including portable auth extensions.
-assert.deepEqual(Object.keys(definition).sort(), ['type', 'url']);
+// The setup wizard creates a user-scoped HTTP connection after the server is selected.
+assert.deepEqual(mcp.mcpServers, {});
 const marketplace = await json('.agents/plugins/marketplace.json');
 assert.equal(marketplace.plugins.find(entry => entry.name === plugin.name).policy.authentication, 'ON_INSTALL');
-assert(!Object.hasOwn(plugin.extensions['com.openai'], 'onboardingSkill'));
+assert.equal(plugin.extensions['com.openai'].onboardingSkill, './skills/setup/SKILL.md');
+await readFile(join(root, 'assets/setup.html'), 'utf8');
 assert.deepEqual(lock.packages[''].dependencies, pkg.dependencies);
 assert.deepEqual(lock.packages[''].devDependencies, pkg.devDependencies);
 for (const key of ['skills', 'mcpServers', 'apps', 'interface']) assert(!Object.hasOwn(plugin, key));
@@ -48,4 +43,4 @@ for (const directory of ['server', 'scripts', 'test']) {
     assert.equal(result.status, 0, `${directory}/${file}: ${result.stderr}`); count++;
   }
 }
-console.log(`Plugin manifests, HTTP MCP, install auth policy, YAML, lockfile and ${count} JavaScript files: OK`);
+console.log(`Plugin manifests, server selection, onboarding, YAML, lockfile and ${count} JavaScript files: OK`);
