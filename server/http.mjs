@@ -6,17 +6,16 @@ import { LklaudApi, ApiError } from './api.mjs';
 import { createMcpServer } from './mcp.mjs';
 
 export function httpConfiguration(env = process.env) {
-  const issuer = new URL(env.LKLAUD_GATEWAY_URL);
+  const issuer = new URL(env.LKLAUD_CLOUD_URL);
   const resource = new URL(env.LKLAUD_MCP_RESOURCE);
   for (const url of [issuer, resource]) {
-    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('Invalid gateway configuration');
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('Invalid cloud configuration');
   }
-  if (issuer.pathname !== '/' || resource.pathname !== '/mcp') throw new Error('Invalid gateway configuration');
-  const mode = env.LKLAUD_OAUTH_MODE || 'federated';
-  if (!['federated', 'single'].includes(mode)) throw new Error('Invalid OAuth mode');
+  if (issuer.pathname !== '/' || resource.pathname !== '/mcp') throw new Error('Invalid cloud configuration');
+  if (env.LKLAUD_OAUTH_MODE !== undefined && env.LKLAUD_OAUTH_MODE !== 'single') throw new Error('Invalid OAuth mode');
   const port = Number(env.LKLAUD_MCP_PORT || '8787');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid port');
-  return { issuer: issuer.origin, resource: resource.href, host: resource.host, origin: resource.origin, port, singleCloud: mode === 'single' };
+  return { issuer: issuer.origin, resource: resource.href, host: resource.host, origin: resource.origin, port };
 }
 
 export function createHttpMcp(config, { fetchImpl = globalThis.fetch } = {}) {
@@ -38,8 +37,8 @@ export function createHttpMcp(config, { fetchImpl = globalThis.fetch } = {}) {
       const match = /^Bearer (lca_[a-f0-9]{64})$/.exec(req.headers.authorization || '');
       if (!match) return json(res, 401, { error: 'invalid_token' }, { 'WWW-Authenticate': challenge });
       // A fresh resource context per HTTP request prevents cross-user/session
-      // credential reuse. Authentication also checks the live tenant grant.
-      const api = new LklaudApi({ cloudUrl: config.issuer, token: match[1] }, { gateway: true, singleCloud: config.singleCloud, audience: config.resource, fetchImpl });
+      // credential reuse. Authentication also checks the live cloud grant.
+      const api = new LklaudApi({ cloudUrl: config.issuer, token: match[1] }, { gateway: true, audience: config.resource, fetchImpl });
       await api.capabilities();
       if (!req.headers['content-type']?.toLowerCase().startsWith('application/json')) return json(res, 415, { error: 'invalid_content_type' });
       let size = 0; const chunks = [];
@@ -70,5 +69,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     server.listen(config.port, '127.0.0.1', () => process.stderr.write('ЛКЛАУД MCP HTTP: очікування reverse proxy на loopback.\n'));
     server.on('error', () => { process.stderr.write('Не вдалося запустити HTTP MCP ЛКЛАУД.\n'); process.exitCode = 1; });
     for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { server.close(() => process.exit(0)); });
-  } catch { process.stderr.write('Налаштуйте LKLAUD_GATEWAY_URL, LKLAUD_MCP_RESOURCE і LKLAUD_MCP_PORT.\n'); process.exitCode = 1; }
+  } catch { process.stderr.write('Налаштуйте LKLAUD_CLOUD_URL, LKLAUD_MCP_RESOURCE і LKLAUD_MCP_PORT.\n'); process.exitCode = 1; }
 }

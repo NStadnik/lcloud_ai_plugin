@@ -25,10 +25,10 @@ export class ApiError extends Error {
 }
 
 export class LklaudApi {
-  #connection; #fetch; #timeoutMs; #gateway; #tenantOrigin; #audience; #singleCloud;
-  constructor(connection, { fetchImpl = globalThis.fetch, timeoutMs = 15_000, gateway = false, audience, singleCloud = false } = {}) {
+  #connection; #fetch; #timeoutMs; #gateway; #audience;
+  constructor(connection, { fetchImpl = globalThis.fetch, timeoutMs = 15_000, gateway = false, audience } = {}) {
     this.#connection = validateConnection(connection, gateway ? 'lca' : 'lua');
-    this.#gateway = gateway; this.#singleCloud = singleCloud;
+    this.#gateway = gateway;
     if (gateway) {
       const resource = new URL(audience);
       if (resource.protocol !== 'https:' || resource.username || resource.password || resource.hash || resource.search) throw new ApiError('invalid_configuration');
@@ -36,12 +36,12 @@ export class LklaudApi {
     }
     this.#fetch = fetchImpl; this.#timeoutMs = timeoutMs;
   }
-  get cloudUrl() { return this.#tenantOrigin || this.#connection.cloudUrl; }
+  get cloudUrl() { return this.#connection.cloudUrl; }
 
   async #request(resource, parameters = {}) {
     const url = new URL('/index.php', this.#connection.cloudUrl);
     url.search = new URLSearchParams(this.#gateway
-      ? { ...parameters, do: this.#singleCloud ? 'users' : 'cloud', func: this.#singleCloud ? 'oauth_gateway_api' : 'oauth_api', endpoint: 'resource', capability: resource, audience: this.#audience }
+      ? { ...parameters, do: 'users', func: 'oauth_gateway_api', endpoint: 'resource', capability: resource, audience: this.#audience }
       : { ...parameters, do: 'users', func: 'api', version: 'v1', resource }).toString();
     let response;
     try {
@@ -82,7 +82,7 @@ export class LklaudApi {
     if (!envelope.data || typeof envelope.data !== 'object' || Array.isArray(envelope.data)) throw new ApiError('invalid_response', response.status);
     if (this.#gateway) {
       const origin = validateConnection({ cloudUrl: envelope.data.cloud, token: this.#connection.token }, 'lca').cloudUrl;
-      this.#tenantOrigin = origin;
+      if (origin !== this.#connection.cloudUrl) throw new ApiError('invalid_response', response.status);
     }
     return envelope.data;
   }
