@@ -1,8 +1,8 @@
 {
   "name": "lklaud",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Локальний MCP-плагін ЛКЛАУД для персонального users API",
+  "description": "Плагін ЛКЛАУД із віддаленим MCP та OAuth у users",
   "type": "module",
   "engines": {
     "node": ">=22.16.0"

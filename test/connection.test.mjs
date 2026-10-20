@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -62,23 +62,16 @@ test('OAuth response cannot change the installation cloud', async () => {
   assert.equal(api.cloudUrl, cloudUrl);
 });
 
-test('OAuth provisioning defaults to a single cloud and preserves existing keys', async () => {
+test('obsolete OAuth provisioning refuses to generate files or replacement keys', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lklaud-oauth-'));
   try {
     const output = join(directory, 'private');
-    const args = ['scripts/provision-oauth.mjs', '--issuer', cloudUrl, '--resource', resource, '--redirect-uri', 'https://client.example/callback', '--output', output];
-    const result = spawnSync(process.execPath, args, { encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(await readdir(output), ['single.json']);
-    const file = join(output, 'single.json');
-    const before = await readFile(file, 'utf8');
-    const config = JSON.parse(before);
-    assert.equal(config.issuer, cloudUrl);
-    assert.equal(config.resource, resource);
-    assert.equal(Object.hasOwn(config, 'institutions'), false);
-    assert.equal((await stat(file)).mode & 0o777, 0o600);
-    assert.equal(spawnSync(process.execPath, args).status, 1);
-    assert.equal(await readFile(file, 'utf8'), before);
+    const result = spawnSync(process.execPath, ['scripts/provision-oauth.mjs', '--issuer', cloudUrl, '--resource', resource, '--redirect-uri', 'https://client.example/callback', '--output', output], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /preference\/edit/);
+    assert.match(result.stderr, /DCR/);
+    assert.deepEqual(await readdir(directory), []);
+    assert.equal(result.stdout, '');
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

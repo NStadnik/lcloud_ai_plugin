@@ -1,21 +1,28 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "lklaud",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Власний розклад і профіль у хмарі закладу освіти ЛКЛАУД через персональний users API.",
-  "author": { "name": "ЛКЛАУД" },
-  "keywords": ["education", "schedule", "lklaud"],
+  "author": {
+    "name": "ЛКЛАУД"
+  },
+  "keywords": [
+    "education",
+    "schedule",
+    "lklaud"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "ЛКЛАУД",
         "shortDescription": "Ваш розклад у хмарі закладу",
-        "longDescription": "Перегляд власного розкладу, підключеного облікового запису й доступних можливостей хмари. Локальний MCP-сервер використовує окремий персональний дозвіл users API.",
+        "longDescription": "Перегляд власного розкладу й профілю через OAuth у users. Під час підключення вкажіть адресу хмари закладу, увійдіть на її сайті та підтвердьте доступ.",
         "developerName": "ЛКЛАУД",
         "category": "Productivity",
         "capabilities": [],
         "defaultPrompt": "Покажи мій розклад на цей тиждень у ЛКЛАУД."
-      }
+      },
+      "onboardingSkill": "./skills/setup/SKILL.md"
     }
   }
 }

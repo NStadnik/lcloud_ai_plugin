@@ -20,17 +20,27 @@ assert.equal(metadata.displayName, 'ЛКЛАУД');
 assert(Array.from(metadata.shortDescription).length <= 30);
 assert(Array.isArray(metadata.capabilities));
 const definition = mcp.mcpServers.lklaud;
-assert.equal(definition.type, 'stdio'); assert.equal(definition.command, 'node');
-assert.equal(definition.cwd, '${PLUGIN_ROOT}');
-const entrypoint = resolve(definition.args[0].replace('${PLUGIN_ROOT}', root));
-assert(entrypoint.startsWith(resolve(root) + '/')); await access(entrypoint);
+assert.equal(definition.type, 'streamable-http');
+const endpoint = new URL(definition.url);
+assert.equal(endpoint.protocol, 'https:'); assert.equal(endpoint.pathname, '/mcp');
+assert(!endpoint.username && !endpoint.password && !endpoint.search && !endpoint.hash);
+for (const field of ['command', 'args', 'cwd', 'env']) assert(!Object.hasOwn(definition, field));
+const auth = definition.extensions['com.openai'].auth;
+assert.equal(auth.type, 'oauth'); assert.deepEqual(auth.client, { mode: 'dcr' });
+assert.deepEqual(auth.defaultScopes, ['profile:read', 'schedule:read']);
+const setup = plugin.extensions['com.openai'].onboardingSkill;
+assert.equal(setup, './skills/setup/SKILL.md');
+await access(resolve(root, setup));
 assert.deepEqual(lock.packages[''].dependencies, pkg.dependencies);
 assert.deepEqual(lock.packages[''].devDependencies, pkg.devDependencies);
 for (const key of ['skills', 'mcpServers', 'apps', 'interface']) assert(!Object.hasOwn(plugin, key));
-const skillText = await readFile(join(root, 'skills/lklaud/SKILL.md'), 'utf8');
-const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(skillText);
-assert(frontmatter); const skill = parse(frontmatter[1]);
-assert.equal(skill.name, 'lklaud'); assert.equal(typeof skill.description, 'string'); assert(skill.description.trim());
+for (const name of await readdir(join(root, 'skills'))) {
+  if (name.startsWith('.')) continue;
+  const skillText = await readFile(join(root, 'skills', name, 'SKILL.md'), 'utf8');
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(skillText);
+  assert(frontmatter); const skill = parse(frontmatter[1]);
+  assert.equal(skill.name, name); assert.equal(typeof skill.description, 'string'); assert(skill.description.trim());
+}
 let count = 0;
 for (const directory of ['server', 'scripts', 'test']) {
   for (const file of await readdir(join(root, directory))) {
@@ -39,4 +49,4 @@ for (const directory of ['server', 'scripts', 'test']) {
     assert.equal(result.status, 0, `${directory}/${file}: ${result.stderr}`); count++;
   }
 }
-console.log(`Plugin manifests, YAML, entrypoint, lockfile and ${count} JavaScript files: OK`);
+console.log(`Plugin manifests, OAuth DCR, onboarding, YAML, lockfile and ${count} JavaScript files: OK`);
