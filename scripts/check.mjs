@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir, access } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parse } from 'yaml';
 
@@ -28,9 +28,7 @@ for (const field of ['command', 'args', 'cwd', 'env']) assert(!Object.hasOwn(def
 const auth = definition.extensions['com.openai'].auth;
 assert.equal(auth.type, 'oauth'); assert.deepEqual(auth.client, { mode: 'dcr' });
 assert.deepEqual(auth.defaultScopes, ['profile:read', 'schedule:read']);
-const setup = plugin.extensions['com.openai'].onboardingSkill;
-assert.equal(setup, './skills/setup/SKILL.md');
-await access(resolve(root, setup));
+assert(!Object.hasOwn(plugin.extensions['com.openai'], 'onboardingSkill'));
 assert.deepEqual(lock.packages[''].dependencies, pkg.dependencies);
 assert.deepEqual(lock.packages[''].devDependencies, pkg.devDependencies);
 for (const key of ['skills', 'mcpServers', 'apps', 'interface']) assert(!Object.hasOwn(plugin, key));
@@ -49,4 +47,4 @@ for (const directory of ['server', 'scripts', 'test']) {
     assert.equal(result.status, 0, `${directory}/${file}: ${result.stderr}`); count++;
   }
 }
-console.log(`Plugin manifests, OAuth DCR, onboarding, YAML, lockfile and ${count} JavaScript files: OK`);
+console.log(`Plugin manifests, OAuth DCR, YAML, lockfile and ${count} JavaScript files: OK`);
