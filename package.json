@@ -1,6 +1,6 @@
 {
   "name": "lklaud",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Плагін ЛКЛАУД із віддаленим MCP та OAuth у users",
   "type": "module",
@@ -12,7 +12,8 @@
     "start:http": "node server/http.mjs",
     "configure": "node scripts/configure.mjs",
     "check": "node scripts/check.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "check:host": "node scripts/check-host.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1"

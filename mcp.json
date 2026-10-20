@@ -3,21 +3,7 @@
   "mcpServers": {
     "lklaud": {
       "type": "streamable-http",
-      "url": "https://dev.nns.in.ua/mcp",
-      "extensions": {
-        "com.openai": {
-          "auth": {
-            "type": "oauth",
-            "client": {
-              "mode": "dcr"
-            },
-            "defaultScopes": [
-              "profile:read",
-              "schedule:read"
-            ]
-          }
-        }
-      }
+      "url": "https://dev.nns.in.ua/mcp"
     }
   }
 }

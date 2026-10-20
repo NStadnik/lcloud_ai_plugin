@@ -25,9 +25,10 @@ const endpoint = new URL(definition.url);
 assert.equal(endpoint.protocol, 'https:'); assert.equal(endpoint.pathname, '/mcp');
 assert(!endpoint.username && !endpoint.password && !endpoint.search && !endpoint.hash);
 for (const field of ['command', 'args', 'cwd', 'env']) assert(!Object.hasOwn(definition, field));
-const auth = definition.extensions['com.openai'].auth;
-assert.equal(auth.type, 'oauth'); assert.deepEqual(auth.client, { mode: 'dcr' });
-assert.deepEqual(auth.defaultScopes, ['profile:read', 'schedule:read']);
+// Current Codex rejects unknown server fields, including portable auth extensions.
+assert.deepEqual(Object.keys(definition).sort(), ['type', 'url']);
+const marketplace = await json('.agents/plugins/marketplace.json');
+assert.equal(marketplace.plugins.find(entry => entry.name === plugin.name).policy.authentication, 'ON_INSTALL');
 assert(!Object.hasOwn(plugin.extensions['com.openai'], 'onboardingSkill'));
 assert.deepEqual(lock.packages[''].dependencies, pkg.dependencies);
 assert.deepEqual(lock.packages[''].devDependencies, pkg.devDependencies);
@@ -47,4 +48,4 @@ for (const directory of ['server', 'scripts', 'test']) {
     assert.equal(result.status, 0, `${directory}/${file}: ${result.stderr}`); count++;
   }
 }
-console.log(`Plugin manifests, OAuth DCR, YAML, lockfile and ${count} JavaScript files: OK`);
+console.log(`Plugin manifests, HTTP MCP, install auth policy, YAML, lockfile and ${count} JavaScript files: OK`);
