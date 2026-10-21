@@ -1,6 +1,6 @@
 {
   "name": "lklaud",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "private": true,
   "description": "Плагін ЛКЛАУД із віддаленим MCP та OAuth у users",
   "type": "module",

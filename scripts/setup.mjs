@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { createInterface } from 'node:readline';
 
 export function codexExecutable() {
   if (process.env.CODEX_CLI_PATH) return process.env.CODEX_CLI_PATH;
@@ -71,7 +72,50 @@ export function configureCodex(origin, { onProgress = () => {}, onChild = () => 
   });
 }
 
-export async function createSetup({ fetchImpl = globalThis.fetch, configure = configureCodex, lifetimeMs = 15 * 60_000 } = {}) {
+// A fresh Codex inventory request performs MCP initialize and tools/list using
+// Codex's OAuth store. Never read tokens or expose raw server/CLI diagnostics.
+export function verifyCodexMcp(origin, { onChild = () => {}, cliPath = codexExecutable(), timeoutMs = 45_000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cliPath, ['app-server', '--stdio'], { stdio: ['pipe', 'pipe', 'ignore'] });
+    const lines = createInterface({ input: child.stdout });
+    let settled = false;
+    const finish = error => {
+      if (settled) return;
+      settled = true; clearTimeout(timer); lines.close(); child.kill(); onChild(null);
+      if (error) reject(new Error(`OAuth завершено, але ${error} Підключення MCP не готове. Перевірте MCP на сервері та повторіть налаштування.`));
+      else resolve();
+    };
+    const timer = setTimeout(() => finish('перевірка MCP перевищила час очікування.'), timeoutMs);
+    const send = message => child.stdin.write(`${JSON.stringify(message)}\n`);
+    child.once('error', () => finish('не вдалося запустити перевірку MCP у Codex.'));
+    child.stdin.on('error', () => finish('перервано перевірку MCP у Codex.'));
+    child.once('close', () => finish('Codex завершив перевірку без підтвердження MCP.'));
+    lines.on('line', line => {
+      try {
+        const message = JSON.parse(line);
+        if (message.method) {
+          if (message.id !== undefined) send({ id: message.id, error: { code: -32601, message: 'Unsupported during connection verification' } });
+          return;
+        }
+        if (![1, 2].includes(message.id)) return;
+        if (message.error) return finish('Codex не зміг перевірити MCP.');
+        if (message.id === 1) {
+          send({ method: 'initialized', params: {} });
+          send({ id: 2, method: 'mcpServerStatus/list', params: { serverName: CONNECTION_NAME, detail: 'toolsAndAuthOnly' } });
+          return;
+        }
+        const status = message.result?.data?.find(item => item.name === CONNECTION_NAME);
+        if (!status || status.httpOrigin !== origin || !status.serverInfo || !status.serverCapabilities?.tools) return finish('не підтверджено успішний MCP initialize.');
+        if (status.toolsError !== null || !status.tools || typeof status.tools !== 'object' || Array.isArray(status.tools)) return finish('не вдалося отримати список інструментів (tools/list).');
+        finish();
+      } catch { finish('Codex повернув некоректну відповідь перевірки MCP.'); }
+    });
+    onChild(child);
+    send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'lklaud-setup', version: '1.0.0' }, capabilities: { experimentalApi: true } } });
+  });
+}
+
+export async function createSetup({ fetchImpl = globalThis.fetch, configure = configureCodex, verifyMcp = verifyCodexMcp, lifetimeMs = 15 * 60_000 } = {}) {
   const csrf = randomBytes(32).toString('hex');
   const template = await readFile(new URL('../assets/setup.html', import.meta.url), 'utf8');
   let origin; let child; let timer; let closed = false;
@@ -90,7 +134,7 @@ export async function createSetup({ fetchImpl = globalThis.fetch, configure = co
       let body = ''; for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 8192) return send(res, 413, { error: 'request_too_large' }); }
       const fields = new URLSearchParams(body); const supplied = fields.get('csrf') || '';
       if (Buffer.byteLength(supplied) !== Buffer.byteLength(csrf) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(csrf))) return send(res, 403, { error: 'invalid_csrf' });
-      if (['checking', 'authorizing'].includes(state.phase)) return send(res, 409, { error: 'already_running' });
+      if (['checking', 'authorizing', 'verifying'].includes(state.phase)) return send(res, 409, { error: 'already_running' });
       let selected;
       try { selected = serverOrigin(fields.get('cloudUrl')); }
       catch (error) { return send(res, 400, { error: error.message }); }
@@ -101,6 +145,10 @@ export async function createSetup({ fetchImpl = globalThis.fetch, configure = co
           await verifyServer(selected, fetchImpl);
           if (closed) return;
           await configure(selected, { onProgress: (phase, saved) => { state = { ...state, phase, saved }; }, onChild: value => { child = value; if (closed) child?.kill(); } });
+          if (closed) return;
+          state = { ...state, phase: 'verifying', saved: true };
+          await verifyMcp(selected, { onChild: value => { child = value; if (closed) child?.kill(); } });
+          if (closed) return;
           state = { ...state, phase: 'done', saved: true, message: 'Підключення готове. Поверніться до клієнта та оновіть список MCP-серверів або відкрийте новий чат.' };
         } catch (error) { state = { ...state, phase: 'error', message: error instanceof Error && !/https?:\/\//.test(error.message) ? error.message : 'Не вдалося перевірити сервер. Перевірте адресу, мережу та налаштування OAuth у users.' }; }
       })();
